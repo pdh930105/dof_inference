@@ -238,18 +238,34 @@ class SixDofEnd2End(object):
         self.box_margin = box_margin
     
     def forward(self, img):
-        if self.stream_type == 'img' or self.stream_type == 'video':
+        if self.stream_type == 'img':
             yolo_preproc_img = self.yolo_img_preprocess(img)
             h, w = yolo_preproc_img.shape[1:]
-            detect_result, box_trigger = self.yolo_model.forward_yolo(yolo_preproc_img)
-            if box_trigger:
+            detect_result, box_detected = self.yolo_model.forward_yolo(yolo_preproc_img)
+            if box_detected:
                 detect_box = detect_result[:4]
                 detect_score = detect_result[4] * detect_result[5]
                 detect_kp = detect_result[6:]
                 x1, x2, y1, y2 = detect_box[0] - detect_box[2]/2, detect_box[0] + detect_box[2]/2, detect_box[1] - detect_box[3]/2, detect_box[1] + detect_box[3]/2
+                detect_box_xyxy = [x1, y1, x2, y2]
                 face_img = yolo_preproc_img.transpose(1,2,0)[max(int(y1)-self.box_margin, 0):min(int(y2)+self.box_margin, h), max(int(x1)-self.box_margin, 0):min(int(x2)+self.box_margin, w), :]
                 pitch, yaw, roll = self.dof_model.dof_forward(face_img)
                 return yolo_preproc_img, detect_box, detect_score, detect_kp, face_img, pitch, yaw, roll
+            else:
+                return None
+        elif self.stream_type == 'video':
+            yolo_preproc_img = img
+            h, w = yolo_preproc_img.shape[1:]
+            detect_result, box_detected = self.yolo_model.forward_yolo(yolo_preproc_img)
+            if box_detected:
+                detect_box = detect_result[:4]
+                detect_score = detect_result[4] * detect_result[5]
+                detect_kp = detect_result[6:]
+                x1, x2, y1, y2 = detect_box[0] - detect_box[2]/2, detect_box[0] + detect_box[2]/2, detect_box[1] - detect_box[3]/2, detect_box[1] + detect_box[3]/2
+                detect_box_xyxy = [x1, y1, x2, y2]
+                face_img = yolo_preproc_img.transpose(1,2,0)[max(int(y1)-self.box_margin, 0):min(int(y2)+self.box_margin, h), max(int(x1)-self.box_margin, 0):min(int(x2)+self.box_margin, w), :]
+                pitch, yaw, roll = self.dof_model.dof_forward(face_img)
+                return yolo_preproc_img, detect_box_xyxy, detect_score, detect_kp, face_img, pitch, yaw, roll
             else:
                 return None
 

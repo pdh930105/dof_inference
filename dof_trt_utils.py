@@ -64,6 +64,41 @@ def compute_euler_angles_from_rotation_matrices(rotation_matrices):
         
     return out_euler
 
+
+def darw_img(output):
+    """
+    draw the output image
+    """
+    out_img = output[0].transpose(1, 2, 0)
+    out_img = np.ascontiguousarray(out_img * 255.0, dtype=np.uint8)
+    bbox_info = output[1]
+    class_pred = output[2]
+    key_info = output[3]
+    p, y, r = output[5], output[6], output[7]
+    out_img = draw_bbox_keypoint(out_img, bbox_info, key_info, class_pred)
+    out_img = draw_axis(out_img, y, p, r, int(key_info[6]), int(key_info[7]))
+    return out_img
+
+def draw_bbox_keypoint(img, bbox_info, key_info, class_pred):
+    """
+    draw the bbox and keypoint
+    """
+    bbox = bbox_info
+    key = key_info
+    class_id = 0
+    box_color = (255, 255, 255)
+    key_color = (0, 0, 0)
+    text = "face:  {:.2f}".format(class_pred)
+    txt_color = (255, 255, 255)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    txt_size = cv2.getTextSize(text, font, 0.4, 1)[0]
+
+    cv2.rectangle(img, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), box_color, 2)
+    for j in range(len(key)//3):
+        cv2.circle(img, (int(key[j*3]), int(key[j*3+1])), 2, key_color, 2)
+    cv2.putText(img, text, (int(bbox[0]), int(bbox[1]) + txt_size[1]), font, 0.4, txt_color, thickness=1)
+    return img
+
 def draw_axis(img, yaw, pitch, roll, tdx=None, tdy=None, size = 100):
     """
     Prints the person's name and age.

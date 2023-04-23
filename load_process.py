@@ -16,9 +16,21 @@ img_formats = ['bmp', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'dng', 'webp', 'mpo']
 vid_formats = ['mov', 'avi', 'mp4', 'mpg', 'mpeg', 'm4v', 'wmv', 'mkv']  # acceptable video suffixes
 
 
-def letterbox(img, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
+def letterbox(img, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, center=True, stride=32):
+    """
+    letterbox image
+    :param img: image
+    :param new_shape: new shape
+    :param color: pad color
+    :param auto: minimum rectangle
+    :param scaleFill: stretch
+    :param scaleup: scale up
+    :param center: center img letterbox, else : left up img letter box (default=True)
+    :param stride: stride
+    """
     # Resize and pad image while meeting stride-multiple constraints
-    print("input letterbox img shape :", img.shape)
+
+
     shape = img.shape[:2]  # current shape [height, width]
     if isinstance(new_shape, int):
         new_shape = (new_shape, new_shape)
@@ -39,15 +51,18 @@ def letterbox(img, new_shape=(640, 640), color=(114, 114, 114), auto=True, scale
         dw, dh = 0.0, 0.0
         new_unpad = (new_shape[1], new_shape[0])
         ratio = new_shape[1] / shape[1], new_shape[0] / shape[0]  # width, height ratios
-
-    dw /= 2  # divide padding into 2 sides
-    dh /= 2
+    if center:
+        dw /= 2  # divide padding into 2 sides
+        dh /= 2
 
     if shape[::-1] != new_unpad:  # resize
         img = cv2.resize(img, new_unpad, interpolation=cv2.INTER_LINEAR)
-
-    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
-    left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+    if center:
+        top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
+        left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+    else:
+        top, bottom = 0, int(round(dh + 0.1))
+        left, right = 0, int(round(dw + 0.1))
     img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
     return img, ratio, (dw, dh)
 
@@ -169,7 +184,7 @@ class LoadRealSense:  # multiple IP or RTSP cameras
         return 0  # 1E12 frames = 32 streams at 30 FPS for 30 years
 
 class LoadImages:  # for inference
-    def __init__(self, path, img_size=640 , stride=32):
+    def __init__(self, path, img_size=640 , center = True, stride=32):
         p = str(Path(path).absolute())  # os-agnostic absolute path
         if '*' in p:
             files = sorted(glob.glob(p, recursive=True))  # glob
@@ -190,6 +205,7 @@ class LoadImages:  # for inference
         self.nf = ni + nv  # number of files
         self.video_flag = [False] * ni + [True] * nv
         self.mode = 'image'
+        self.center = center
         if any(videos):
             self.new_video(videos[0])  # new video
         else:
@@ -210,7 +226,6 @@ class LoadImages:  # for inference
             # Read video
             self.mode = 'video'
             ret_val, img0 = self.cap.read()
-            print("img0 shape :", img0.shape)
             if not ret_val:
                 self.count += 1
                 self.cap.release()
@@ -232,7 +247,7 @@ class LoadImages:  # for inference
             #print(f'image {self.count}/{self.nf} {path}: ', end='')
 
         # Padded resize
-        img = letterbox(img0, self.img_size, stride=self.stride, auto=False)[0]
+        img = letterbox(img0, self.img_size, stride=self.stride, auto=False, center=self.center)[0]
         # Convert
         img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416 and normalize
         img = img / 255.0
