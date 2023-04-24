@@ -145,7 +145,7 @@ class LoadRealSense:  # multiple IP or RTSP cameras
         while pipeline.get_active_profile():
             n += 1
             # _, self.imgs[index] = cap.read()
-            if n == 4:  # read every 4th frame
+            if n == 1:  # read every 4th frame
                 frames = pipeline.wait_for_frames()
                 aligned_frames = align.process(frames)
                 source_frames = aligned_frames.get_color_frame() if self.sources == 'rgb' else aligned_frames.get_infrared_frame()
@@ -164,18 +164,15 @@ class LoadRealSense:  # multiple IP or RTSP cameras
         self.count += 1
         img0 = self.imgs.copy()
         depth_img0 = self.depth_imgs.copy()
-        if cv2.waitKey(1) == ord('q'):  # q to quit
-            cv2.destroyAllWindows()
-            raise StopIteration
-
+        
         # Letterbox
         img, ratio, _ = rs_padding(img0, self.img_size, auto=self.rect, stride=self.stride) 
         depth_img = rs_padding(depth_img0, self.img_size, auto=self.rect, stride=self.stride)[0]
         # Stack
         # Convert
-        tensor_img = img.transpose(2,0,1)  # BGR to RGB, to 3x640x640
+        tensor_img = img[:,:,::-1].transpose(2,0,1)  # BGR to RGB, to 3x640x640
         tensor_img = tensor_img / 255.0
-        tensor_img = np.ascontiguousarray(img, dtype=np.float32)
+        tensor_img = np.ascontiguousarray(tensor_img, dtype=np.float32)
         depth_img = np.ascontiguousarray(depth_img, dtype=np.float16)
 
         return self.sources, tensor_img, img, img0, depth_img, depth_img0, None # sources, trt input img, preprocess img, original img, depth img, original depth img, path

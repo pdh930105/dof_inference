@@ -65,7 +65,7 @@ def compute_euler_angles_from_rotation_matrices(rotation_matrices):
     return out_euler
 
 
-def darw_img(output):
+def draw_img(output):
     """
     draw the output image
     """
@@ -77,6 +77,7 @@ def darw_img(output):
     p, y, r = output[5], output[6], output[7]
     out_img = draw_bbox_keypoint(out_img, bbox_info, key_info, class_pred)
     out_img = draw_axis(out_img, y, p, r, int(key_info[6]), int(key_info[7]))
+    out_img = out_img[:, :, ::-1]
     return out_img
 
 def draw_bbox_keypoint(img, bbox_info, key_info, class_pred):

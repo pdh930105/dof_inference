@@ -20,13 +20,14 @@ if __name__ == '__main__':
 	parser.add_argument("--print-log", default=False, action="store_true",
 					help="use end2end engine")
 	parser.add_argument('--get-fps', default=False, action="store_true", help='get fps (default: False)')
-	parser.add_argument('--show_img', default=False, action="store_true", help='show img (default: False)')
+	parser.add_argument('--show-img', default=False, action="store_true", help='show img (default: False)')
 	parser.add_argument('--iter', default=100, type=int, help='get fps (default: 100)')
 
 	args = parser.parse_args()
 	print(args)
 
 	logger.add(args.log)
+	logger.info(args)
 	img_type = ['jpg', 'png', 'jpeg', 'bmp']
 	video_type = ['mp4', 'avi', 'mov', 'mkv']
 
@@ -96,13 +97,14 @@ if __name__ == '__main__':
 			for path, img, im0s, cap in dataset:
 				output = engine.forward(img)
 				logger.info(f" # of output : {len(output)}, resized-img shape {output[0].shape}, box info : {output[1]}, \nface shape : {output[4].shape}, p, y, r : {output[5], output[6], output[7]}")
+				if output is not None:
+					if args.show_img:
+						out_img = draw_img(output)
+						cv2.imshow('img', out_img)
 				if cv2.waitKey(1) == ord('q'):
 					cv2.destroyAllWindows()
 					cap.release()
 					raise StopIteration
-				if args.show_img:
-					out_img = draw_img(output)
-					cv2.imshow('img', out_img)
 
 	elif args.stream == 'cam':
 		pass
@@ -111,15 +113,16 @@ if __name__ == '__main__':
 		rs_stream = LoadRealSense(args.source, img_size=engine.yolo_model.imgsz[0])
 		for source, tensor_img, preprocess_img ,ori_img, depth_img, depth_img0, _ in rs_stream:
 			output = engine.forward(tensor_img)
-			print(f" # of output : {len(output)}, resized-img shape {output[0].shape}, box info : {output[1]}, face shape : {output[4].shape}, p, y, r : {output[5], output[6], output[7]}")
-
-	"""
-	if video:
-		use_cam = True if video.isdigit() else False
-		if args.v1:
-			pred.detect_video(video, conf=0.5, use_cam=use_cam, end2end=args.end2end) # set 0 use a webcam
-		else:
-			pred.detect_video_v2(video, conf=0.5, use_cam=use_cam, end2end=args.end2end)
-	if rs:
-		pred.detect_rs(args.rs_type, conf=0.5)
-	"""
+			if output is not None:
+				#logger.info(f" # of output : {len(output)}, resized-img shape {output[0].shape}, box info : {output[1]}, \nface shape : {output[4].shape}, p, y, r : {output[5], output[6], output[7]}")
+				if args.show_img:
+					out_img = draw_img(output)
+					cv2.imshow('rs_img', out_img)
+			else:
+				if args.show_img:
+					cv2.imshow('rs_img', preprocess_img) 
+					cv2.imwrite('test_img.jpg', preprocess_img)
+			if cv2.waitKey(1) == ord('q'):
+				cv2.destroyAllWindows()
+				raise StopIteration
+			

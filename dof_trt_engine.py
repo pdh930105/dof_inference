@@ -81,12 +81,13 @@ class YOLOEngine(object):
         yolo_output, nms_result = self.infer(img)
         yolo_output = yolo_output.reshape(-1, 6 + self.nkpt*3) # (xywh + box + cls (6)) + self.nkpt * 3
         nms_idx = np.unique(nms_result)
-        if len(nms_idx) > 0: # exists detect box
+        if len(nms_idx) > 0 and nms_idx[0] != -1: # exists detect box
             detect_box = yolo_output[nms_idx[1:]] # remove zero index 
             if len(detect_box) > 1: # get multiple box
                 detect_box = yolo_output[np.argmax((yolo_output[nms_idx, 2] * yolo_output[nms_idx, 3]))] # select max box size
      
             return detect_box.flatten(), True
+
         else:
             return None, False
 
@@ -199,7 +200,6 @@ class DoFEngine(object):
         preproc_img = self.preprocess(img)
         output_list = self.infer(preproc_img)
         predictions = output_list[0].reshape(1, -1)
-        print("dof prediction : ", predictions)
         pitch, yaw, roll = self.postprocess(predictions)
         return pitch, yaw, roll
     
@@ -253,7 +253,7 @@ class SixDofEnd2End(object):
                 return yolo_preproc_img, detect_box, detect_score, detect_kp, face_img, pitch, yaw, roll
             else:
                 return None
-        elif self.stream_type == 'video':
+        elif self.stream_type == 'video' or self.stream_type == 'rs':
             yolo_preproc_img = img
             h, w = yolo_preproc_img.shape[1:]
             detect_result, box_detected = self.yolo_model.forward_yolo(yolo_preproc_img)
