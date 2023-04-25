@@ -169,6 +169,7 @@ class DoFEngine(object):
             dtype = trt.nptype(engine.get_binding_dtype(binding))
             host_mem = cuda.pagelocked_empty(size, dtype)
             device_mem = cuda.mem_alloc(host_mem.nbytes)
+            self.bindings.append(int(device_mem))
             print(f"{self.engine_name} {i} idx {binding}'s required shape : {size}[{engine.get_binding_shape(i)}, dtype={dtype}])")
             if engine.binding_is_input(binding):
                 self.inputs.append({'host': host_mem, 'device': device_mem})
