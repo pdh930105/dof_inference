@@ -39,17 +39,18 @@ class YOLOEngine(object):
         self.inputs, self.outputs, self.bindings = [], [], []
         self.stream = cuda.Stream()
         
-        for binding in engine:
+        for i, binding in enumerate(engine):
             size = trt.volume(engine.get_binding_shape(binding))
             dtype = trt.nptype(engine.get_binding_dtype(binding))
             host_mem = cuda.pagelocked_empty(size, dtype)
             device_mem = cuda.mem_alloc(host_mem.nbytes)
+            print(f"{self.engine_name} {i} idx {binding}'s required shape : {size}[{engine.get_binding_shape(i)}, dtype={dtype}])")
+    
             self.bindings.append(int(device_mem))
             if engine.binding_is_input(binding):
                 self.inputs.append({'host': host_mem, 'device': device_mem})
             else:
                 self.outputs.append({'host': host_mem, 'device': device_mem})
-        self.logger.info(f"\n output size : {size} \n dtype : {dtype} \n input_size : {self.imgsz} \n ")
         self.logger.info(f"Finish load YOLO engine {engine_path}")
 
     def infer(self, img):
@@ -144,7 +145,7 @@ class YOLOEngine(object):
 
 class DoFEngine(object):
     def __init__(self, engine_path, model_name, logger, print_log=False):
-        self.model_name = model_name
+        self.engine_name = model_name
         self.img_mean = np.array([0.485, 0.456, 0.406]).reshape(1,1,-1) # imagenet mean
         self.img_std = np.array([0.229, 0.224, 0.225]).reshape(1,1,-1) # imagenet std
         self.logger =logger
@@ -163,18 +164,17 @@ class DoFEngine(object):
         self.inputs, self.outputs, self.bindings = [], [], []
         self.stream = cuda.Stream()
         
-        for binding in engine:
+        for i, binding in enumerate(engine):
             size = trt.volume(engine.get_binding_shape(binding))
             dtype = trt.nptype(engine.get_binding_dtype(binding))
             host_mem = cuda.pagelocked_empty(size, dtype)
             device_mem = cuda.mem_alloc(host_mem.nbytes)
-            self.bindings.append(int(device_mem))
+            print(f"{self.engine_name} {i} idx {binding}'s required shape : {size}[{engine.get_binding_shape(i)}, dtype={dtype}])")
             if engine.binding_is_input(binding):
                 self.inputs.append({'host': host_mem, 'device': device_mem})
             else:
                 self.outputs.append({'host': host_mem, 'device': device_mem})
-        self.logger.info(f"\n output size : {size} \n dtype : {dtype} \n input_size : {self.imgsz} \n ")
-        self.logger.info(f"Finish load DoF engine {engine_path}")
+        self.logger.info(f"Finish load DoF engine {self.model_name} {engine_path}")
 
     def infer(self, img):
         self.inputs[0]['host'] = np.ravel(img)
