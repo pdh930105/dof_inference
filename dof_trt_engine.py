@@ -174,7 +174,7 @@ class DoFEngine(object):
                 self.inputs.append({'host': host_mem, 'device': device_mem})
             else:
                 self.outputs.append({'host': host_mem, 'device': device_mem})
-        self.logger.info(f"Finish load DoF engine {self.model_name} {engine_path}")
+        self.logger.info(f"Finish load DoF engine {self.engine_name} {engine_path}")
 
     def infer(self, img):
         self.inputs[0]['host'] = np.ravel(img)
