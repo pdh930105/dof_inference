@@ -8,6 +8,10 @@ from loguru import logger
 from load_process import LoadRealSense, LoadImages
 from dof_trt_utils import draw_img
 
+import socket
+import time
+
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--yolo_engine", default='./end2end_onnx_2.trt', help="YOLO TRT engine Path")
@@ -22,9 +26,23 @@ if __name__ == '__main__':
 	parser.add_argument('--get-fps', default=False, action="store_true", help='get fps (default: False)')
 	parser.add_argument('--show-img', default=False, action="store_true", help='show img (default: False)')
 	parser.add_argument('--iter', default=100, type=int, help='get fps (default: 100)')
-
+	parser.add_argument('--server', action='store_true', help="activate server")
+	parser.add_argument('--ip-addr', default='localhost', help="required socket ip (local ip addr)")
+    
 	args = parser.parse_args()
 	print(args)
+
+	if args.server == True:
+		# opt.server_host = "163.152.172.78"
+		assert args.ip_addr !='localhost', "required ip_addr for using --server option"
+		args.server_host = args.ip_addr
+		args.server_port = 10243
+		args.servers = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		args.servers.bind((args.server_host, args.server_port))
+		print("Waiting for client to connect...")
+		args.servers.listen(1)
+		args.server_conn, args.server_addr = args.servers.accept()
+		print('Connected by ', args.server_addr)
 
 	logger.add(args.log)
 	logger.info(args)
@@ -115,6 +133,14 @@ if __name__ == '__main__':
 			output = engine.forward(tensor_img)
 			if output is not None:
 				#logger.info(f" # of output : {len(output)}, resized-img shape {output[0].shape}, box info : {output[1]}, \nface shape : {output[4].shape}, p, y, r : {output[5], output[6], output[7]}")
+				if args.server == True:
+					data = f'{float(output[5]):.3f},{float(output[6]):.3f},{float(output[7]):.3f},{int(output[3][6])},{int(output[3][7])},'
+					try:
+						args.server_conn.send(data.encode())
+					except Exception as e:
+						print(data), print(e)
+				else:
+					pass
 				if args.show_img:
 					out_img = draw_img(output)
 					cv2.imshow('rs_img', out_img)
