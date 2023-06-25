@@ -66,20 +66,48 @@ if __name__ == '__main__':
 		start_time = time.perf_counter()
 		if args.get_fps:
 			img_preprocess_list = []
+			yolo_preprocess_list = []
+			yolo_infer_list = []
+			dof_preprocess_list = []
+			dof_infer_list = []
 			engine_forward_list = []
 			t0 = time.perf_counter()
 			for i in range(args.iter):
 				img = cv2.imread(args.source)
 				img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 				t1 = time.perf_counter()
-				output = engine.forward(img_rgb)
+				yolo_preproc_img = engine.yolo_img_preprocess(img_rgb)
+				h, w = yolo_preproc_img.shape[1:]
 				t2 = time.perf_counter()
-				img_preprocess_list.append(t1-t0)
-				engine_forward_list.append(t2-t1)
+				detect_result, box_detected = engine.yolo_model.forward_yolo(yolo_preproc_img)
+				t3 = time.perf_counter()
+				if box_detected:
+					detect_box = detect_result[:4]
+					detect_score = detect_result[4] * detect_result[5]
+					detect_kp = detect_result[6:]
+					x1, x2, y1, y2 = detect_box[0] - detect_box[2]/2, detect_box[0] + detect_box[2]/2, detect_box[1] - detect_box[3]/2, detect_box[1] + detect_box[3]/2
+					detect_box_xyxy = [x1, y1, x2, y2]
+					face_img = yolo_preproc_img.transpose(1,2,0)[max(int(y1)-engine.box_margin, 0):min(int(y2)+engine.box_margin, h), max(int(x1)-engine.box_margin, 0):min(int(x2)+engine.box_margin, w), :]
+					t4 = time.perf_counter()
+					pitch, yaw, roll = engine.dof_model.dof_forward(face_img)
+					t5 = time.perf_counter()
+				
+					img_preprocess_list.append(t1-t0)
+					yolo_preprocess_list.append(t2-t1)
+					yolo_infer_list.append(t3-t2)
+					dof_preprocess_list.append(t4-t3)
+					dof_infer_list.append(t5-t4)
+					engine_forward_list.append(t5-t0)
+					output= [yolo_preproc_img, detect_box, detect_score, detect_kp, face_img, pitch, yaw, roll]
 				t0 = time.perf_counter()
+
 			end_time = time.perf_counter()
 			print(f"inference time (iter {args.iter} mean) : {(end_time-start_time)/args.iter:.5f}s ({1/((end_time-start_time)/args.iter)} FPS)")
 			print(f"img preprocess time (iter {args.iter} mean) : {np.mean(img_preprocess_list):.5f}s")
+			print(f"yolo preprocess time (iter {args.iter} mean) : {np.mean(yolo_preprocess_list):.5f}s")
+			print(f"yolo infer time (iter {args.iter} mean) : {np.mean(yolo_infer_list):.5f}s")
+			print(f"dof preprocess time (iter {args.iter} mean) : {np.mean(dof_preprocess_list):.5f}s")
+			print(f"dof infer time (iter {args.iter} mean) : {np.mean(dof_infer_list):.5f}s")
 			print(f"engine forward time (iter {args.iter} mean) : {np.mean(engine_forward_list):.5f}s")
 		else:
 			img = cv2.imread(args.source)
@@ -102,7 +130,7 @@ if __name__ == '__main__':
 				img_preprocess_list.append(t1-t0)
 				engine_forward_list.append(t2-t1)
 				t0 = time.perf_counter()
-				logger.info(f" # of output : {len(output)}, resized-img shape {output[0].shape}, box info : {output[1]}, \nface shape : {output[4].shape}, p, y, r : {output[5], output[6], output[7]}")
+				#logger.info(f" # of output : {len(output)}, resized-img shape {output[0].shape}, box info : {output[1]}, \nface shape : {output[4].shape}, p, y, r : {output[5], output[6], output[7]}")
 				if cv2.waitKey(1) == ord('q'):  # q to quit
 					raise StopIteration
 			
